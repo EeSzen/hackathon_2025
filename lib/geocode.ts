@@ -73,11 +73,7 @@ export async function geocodeLocation(
       location + ", Malaysia"
     )}&limit=1`;
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "SafeTruck-App", // Nominatim requires a user agent
-      },
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       console.error("Geocoding API error:", response.status);
@@ -110,11 +106,7 @@ export async function reverseGeocode(
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}`;
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "SafeTruck-App",
-      },
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       return null;

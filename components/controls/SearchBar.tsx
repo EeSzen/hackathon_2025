@@ -23,13 +23,17 @@ export default function SearchBar({
           value={startInput}
           onChange={(e) => onStartChange(e.target.value)}
           placeholder="Start Destination"
-          className="flex-1 px-3 py-[9px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A90E2] focus:border-[#4A90E2] text-black"
+          className="px-3 py-[9px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A90E2] focus:border-[#4A90E2] text-black"
+          style={{ width: "calc(50% - 30px)" }}
           aria-label="Start Destination"
         />
         <span className="text-gray-600 font-medium italic text-[19px] mx-[5px]">
           to
         </span>
-        <div className="flex-1 flex items-center gap-2">
+        <div
+          className="flex items-center gap-2"
+          style={{ width: "calc(50% - 30px)" }}
+        >
           <input
             type="text"
             value={endInput}

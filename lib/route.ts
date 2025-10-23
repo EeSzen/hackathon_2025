@@ -1,9 +1,9 @@
-import { Coordinates } from '@/types/trip';
+import { Coordinates } from "@/types/trip";
 
-const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
+const OSRM_URL = "https://router.project-osrm.org/route/v1/driving";
 
 export interface RouteGeometry {
-  type: 'LineString';
+  type: "LineString";
   coordinates: [number, number][]; // [lon, lat] format
 }
 
@@ -22,7 +22,17 @@ export async function fetchRoute(
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`Route fetch failed: ${response.statusText}`);
+      console.warn(
+        `OSRM route fetch failed: ${response.statusText}, using straight line fallback`
+      );
+      // Return a simple straight line route as fallback
+      return {
+        type: "LineString",
+        coordinates: [
+          [start.lon, start.lat],
+          [end.lon, end.lat],
+        ],
+      };
     }
 
     const data = await response.json();
@@ -31,9 +41,23 @@ export async function fetchRoute(
       return data.routes[0].geometry;
     }
 
-    return null;
+    // Fallback to straight line if no routes found
+    return {
+      type: "LineString",
+      coordinates: [
+        [start.lon, start.lat],
+        [end.lon, end.lat],
+      ],
+    };
   } catch (error) {
-    console.error('Route fetch error:', error);
-    return null;
+    console.error("Route fetch error:", error);
+    // Return a simple straight line route as fallback
+    return {
+      type: "LineString",
+      coordinates: [
+        [start.lon, start.lat],
+        [end.lon, end.lat],
+      ],
+    };
   }
 }

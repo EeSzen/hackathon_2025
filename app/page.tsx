@@ -36,9 +36,20 @@ export default function Dashboard() {
   const [endInput, setEndInput] = useState("");
   const [dayNight, setDayNight] = useState<DayNight>("Day");
 
+  // Track confirmed search values (only updated after search button click)
+  const [confirmedStartInput, setConfirmedStartInput] = useState("");
+  const [confirmedEndInput, setConfirmedEndInput] = useState("");
+
   const [startCoords, setStartCoords] = useState<Coordinates | null>(null);
   const [endCoords, setEndCoords] = useState<Coordinates | null>(null);
   const [route, setRoute] = useState<RouteGeometry | null>(null);
+
+  // Table-clicked trip route (separate from search route)
+  const [tripRoute, setTripRoute] = useState<RouteGeometry | null>(null);
+  const [tripStartCoords, setTripStartCoords] = useState<Coordinates | null>(
+    null
+  );
+  const [tripEndCoords, setTripEndCoords] = useState<Coordinates | null>(null);
 
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [clickCount, setClickCount] = useState(0);
@@ -63,8 +74,22 @@ export default function Dashboard() {
 
   // Compute filtered trips and sort by reliability score (highest first)
   const filteredTrips = useMemo(() => {
-    const filtered = filterTrips(trips, dayNight, startInput, endInput);
-    console.log(`Filtered trips: ${filtered.length} for ${dayNight} period`);
+    // Show filtered/cleaned data by default (with day/night filter, but no location filter)
+    // Only apply location filtering when search has been executed
+    let filtered;
+    if (!confirmedStartInput.trim() || !confirmedEndInput.trim()) {
+      // Default: show cleaned data filtered by day/night only
+      filtered = filterTrips(trips, dayNight);
+    } else {
+      // After search: apply location filters too
+      filtered = filterTrips(
+        trips,
+        dayNight,
+        confirmedStartInput,
+        confirmedEndInput
+      );
+      console.log(`Filtered trips: ${filtered.length} for ${dayNight} period`);
+    }
 
     // Sort by reliability score (descending), then by date (most recent first)
     return filtered.sort((a, b) => {
@@ -81,18 +106,38 @@ export default function Dashboard() {
         new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
       );
     });
-  }, [trips, dayNight, startInput, endInput]);
+  }, [trips, dayNight, confirmedStartInput, confirmedEndInput]);
 
   // Compute suggestions for Day and Night
   const daySuggestions = useMemo(() => {
-    const dayTrips = filterTrips(trips, "Day", startInput, endInput);
+    // Only compute suggestions when both confirmed inputs are filled
+    if (!confirmedStartInput.trim() || !confirmedEndInput.trim()) {
+      return [];
+    }
+
+    const dayTrips = filterTrips(
+      trips,
+      "Day",
+      confirmedStartInput,
+      confirmedEndInput
+    );
     return computeSuggestedVehicles(dayTrips);
-  }, [trips, startInput, endInput]);
+  }, [trips, confirmedStartInput, confirmedEndInput]);
 
   const nightSuggestions = useMemo(() => {
-    const nightTrips = filterTrips(trips, "Night", startInput, endInput);
+    // Only compute suggestions when both confirmed inputs are filled
+    if (!confirmedStartInput.trim() || !confirmedEndInput.trim()) {
+      return [];
+    }
+
+    const nightTrips = filterTrips(
+      trips,
+      "Night",
+      confirmedStartInput,
+      confirmedEndInput
+    );
     return computeSuggestedVehicles(nightTrips);
-  }, [trips, startInput, endInput]);
+  }, [trips, confirmedStartInput, confirmedEndInput]);
 
   // Update selected trip when filtered trips change
   useEffect(() => {
@@ -102,6 +147,40 @@ export default function Dashboard() {
       setSelectedTrip(null);
     }
   }, [filteredTrips, selectedTrip]);
+
+  // Auto-load the first trip's route when filtered trips change or on initial load
+  useEffect(() => {
+    const loadFirstTripRoute = async () => {
+      if (filteredTrips.length > 0) {
+        const firstTrip = filteredTrips[0];
+
+        // Create coordinates from trip data
+        const tripStart: Coordinates = {
+          lat: firstTrip.start_lat,
+          lon: firstTrip.start_lon,
+        };
+        const tripEnd: Coordinates = {
+          lat: firstTrip.end_lat,
+          lon: firstTrip.end_lon,
+        };
+
+        setTripStartCoords(tripStart);
+        setTripEndCoords(tripEnd);
+
+        // Fetch route for the first trip
+        try {
+          const routeData = await fetchRoute(tripStart, tripEnd);
+          if (routeData) {
+            setTripRoute(routeData);
+          }
+        } catch (err) {
+          console.error("Error fetching first trip route:", err);
+        }
+      }
+    };
+
+    loadFirstTripRoute();
+  }, [filteredTrips]);
 
   // Handle search
   const handleSearch = async () => {
@@ -129,6 +208,10 @@ export default function Dashboard() {
 
       setStartCoords(start);
       setEndCoords(end);
+
+      // Update confirmed inputs to trigger table and suggestions refresh
+      setConfirmedStartInput(startInput);
+      setConfirmedEndInput(endInput);
 
       // Fetch route
       const routeData = await fetchRoute(start, end);
@@ -170,10 +253,38 @@ export default function Dashboard() {
     setDayNight(value);
   };
 
+  // Handle trip selection from table - fetch route for the trip
+  const handleTripSelect = async (trip: Trip) => {
+    setSelectedTrip(trip);
+
+    // Create coordinates from trip data
+    const tripStart: Coordinates = { lat: trip.start_lat, lon: trip.start_lon };
+    const tripEnd: Coordinates = { lat: trip.end_lat, lon: trip.end_lon };
+
+    setTripStartCoords(tripStart);
+    setTripEndCoords(tripEnd);
+
+    // Fetch route for the trip
+    try {
+      const routeData = await fetchRoute(tripStart, tripEnd);
+      if (routeData) {
+        setTripRoute(routeData);
+      } else {
+        console.warn("Could not fetch route for trip");
+        setTripRoute(null);
+      }
+    } catch (err) {
+      console.error("Error fetching trip route:", err);
+      setTripRoute(null);
+    }
+  };
+
   // Handle clear inputs
   const handleClear = () => {
     setStartInput("");
     setEndInput("");
+    setConfirmedStartInput("");
+    setConfirmedEndInput("");
     setStartCoords(null);
     setEndCoords(null);
     setRoute(null);
@@ -241,7 +352,7 @@ export default function Dashboard() {
             <TripsTable
               trips={filteredTrips}
               selectedTrip={selectedTrip}
-              onTripSelect={setSelectedTrip}
+              onTripSelect={handleTripSelect}
             />
           </div>
 
@@ -254,6 +365,9 @@ export default function Dashboard() {
                 route={route}
                 startCoords={startCoords}
                 endCoords={endCoords}
+                tripRoute={tripRoute}
+                tripStartCoords={tripStartCoords}
+                tripEndCoords={tripEndCoords}
                 onMapClick={handleMapClick}
                 isDarkTheme={dayNight === "Night"}
               />
