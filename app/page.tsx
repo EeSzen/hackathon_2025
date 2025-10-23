@@ -1,65 +1,223 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { Trip, DayNight, Coordinates } from '@/types/trip';
+import { loadTripsFromCSV, filterTrips, computeSuggestedVehicles } from '@/lib/csv';
+import { geocodeLocation } from '@/lib/geocode';
+import { fetchRoute, RouteGeometry } from '@/lib/route';
+import SearchBar from '@/components/controls/SearchBar';
+import SuggestedHeader from '@/components/filters/SuggestedHeader';
+import DayNightCards from '@/components/summary/DayNightCards';
+import TripsTable from '@/components/table/TripsTable';
+import SummaryCard from '@/components/summary/SummaryCard';
+
+// Dynamic import for LeafletMap (client-only)
+const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center border rounded-lg bg-gray-50">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+});
+
+export default function Dashboard() {
+  // State management
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [startInput, setStartInput] = useState('');
+  const [endInput, setEndInput] = useState('');
+  const [dayNight, setDayNight] = useState<DayNight>('Day');
+  
+  const [startCoords, setStartCoords] = useState<Coordinates | null>(null);
+  const [endCoords, setEndCoords] = useState<Coordinates | null>(null);
+  const [route, setRoute] = useState<RouteGeometry | null>(null);
+  
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [clickCount, setClickCount] = useState(0);
+
+  // Load CSV data on mount
+  useEffect(() => {
+    loadTripsFromCSV()
+      .then((data) => {
+        setTrips(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load trips:', err);
+        setError('Failed to load trip data. Please ensure trip_summary.csv is in public/data/');
+        setLoading(false);
+      });
+  }, []);
+
+  // Compute filtered trips
+  const filteredTrips = useMemo(() => {
+    return filterTrips(trips, dayNight, startInput, endInput);
+  }, [trips, dayNight, startInput, endInput]);
+
+  // Compute suggestions for Day and Night
+  const daySuggestions = useMemo(() => {
+    const dayTrips = filterTrips(trips, 'Day', startInput, endInput);
+    return computeSuggestedVehicles(dayTrips);
+  }, [trips, startInput, endInput]);
+
+  const nightSuggestions = useMemo(() => {
+    const nightTrips = filterTrips(trips, 'Night', startInput, endInput);
+    return computeSuggestedVehicles(nightTrips);
+  }, [trips, startInput, endInput]);
+
+  // Update selected trip when filtered trips change
+  useEffect(() => {
+    if (filteredTrips.length > 0 && !selectedTrip) {
+      setSelectedTrip(filteredTrips[0]);
+    } else if (filteredTrips.length === 0) {
+      setSelectedTrip(null);
+    }
+  }, [filteredTrips, selectedTrip]);
+
+  // Handle search
+  const handleSearch = async () => {
+    if (!startInput.trim() || !endInput.trim()) {
+      alert('Please enter both starting and ending points');
+      return;
+    }
+
+    try {
+      // Geocode both inputs
+      const [start, end] = await Promise.all([
+        geocodeLocation(startInput),
+        geocodeLocation(endInput),
+      ]);
+
+      if (!start) {
+        alert(`Could not find location: ${startInput}`);
+        return;
+      }
+
+      if (!end) {
+        alert(`Could not find location: ${endInput}`);
+        return;
+      }
+
+      setStartCoords(start);
+      setEndCoords(end);
+
+      // Fetch route
+      const routeData = await fetchRoute(start, end);
+      if (routeData) {
+        setRoute(routeData);
+      } else {
+        alert('Could not compute route between the two points');
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      alert('An error occurred during search');
+    }
+  };
+
+  // Handle map clicks (first click = start, second = end)
+  const handleMapClick = async (coords: Coordinates) => {
+    if (clickCount === 0) {
+      // First click - set start
+      setStartCoords(coords);
+      setStartInput(`${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`);
+      setClickCount(1);
+    } else {
+      // Second click - set end and fetch route
+      setEndCoords(coords);
+      setEndInput(`${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`);
+      setClickCount(0);
+
+      if (startCoords) {
+        const routeData = await fetchRoute(startCoords, coords);
+        if (routeData) {
+          setRoute(routeData);
+        }
+      }
+    }
+  };
+
+  // Handle day/night change
+  const handleDayNightChange = (value: DayNight) => {
+    setDayNight(value);
+  };
+
+  // Get vehicle ID for summary card
+  const vehicleId = selectedTrip?.vehicle_id || filteredTrips[0]?.vehicle_id || 'N/A';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-xl text-gray-600">Loading trip data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-xl text-red-600 mb-4">{error}</p>
+          <p className="text-gray-600">Please check the console for more details.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="h-screen flex flex-col">
+      <header className="bg-blue-600 text-white py-4 px-6 shadow-md">
+        <h1 className="text-2xl font-bold">SafeTruck Dashboard</h1>
+        <p className="text-sm text-blue-100">Route & Fuel Efficiency Optimizer</p>
+      </header>
+
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-0">
+          {/* Left Panel - 2/3 */}
+          <div className="lg:col-span-2 p-6 overflow-y-auto">
+            <SearchBar
+              startInput={startInput}
+              endInput={endInput}
+              onStartChange={setStartInput}
+              onEndChange={setEndInput}
+              onSearch={handleSearch}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+            <SuggestedHeader
+              dayNight={dayNight}
+              onDayNightChange={handleDayNightChange}
+            />
+
+            <DayNightCards
+              daySuggestions={daySuggestions}
+              nightSuggestions={nightSuggestions}
+            />
+
+            <TripsTable
+              trips={filteredTrips}
+              selectedTrip={selectedTrip}
+              onTripSelect={setSelectedTrip}
+            />
+          </div>
+
+          {/* Right Panel - 1/3 */}
+          <div className="lg:col-span-1 bg-gray-50 p-6 flex flex-col">
+            <SummaryCard dayNight={dayNight} vehicleId={vehicleId} />
+            
+            <div className="flex-1 min-h-0">
+              <LeafletMap
+                route={route}
+                startCoords={startCoords}
+                endCoords={endCoords}
+                onMapClick={handleMapClick}
+              />
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
