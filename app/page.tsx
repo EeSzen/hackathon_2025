@@ -1,19 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
-import { Trip, DayNight, Coordinates } from '@/types/trip';
-import { loadTripsFromCSV, filterTrips, computeSuggestedVehicles } from '@/lib/csv';
-import { geocodeLocation } from '@/lib/geocode';
-import { fetchRoute, RouteGeometry } from '@/lib/route';
-import SearchBar from '@/components/controls/SearchBar';
-import SuggestedHeader from '@/components/filters/SuggestedHeader';
-import DayNightCards from '@/components/summary/DayNightCards';
-import TripsTable from '@/components/table/TripsTable';
-import SummaryCard from '@/components/summary/SummaryCard';
+import { useEffect, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { Trip, DayNight, Coordinates } from "@/types/trip";
+import {
+  loadTripsFromCSV,
+  filterTrips,
+  computeSuggestedVehicles,
+} from "@/lib/csv";
+import { geocodeLocation } from "@/lib/geocode";
+import { fetchRoute, RouteGeometry } from "@/lib/route";
+import SearchBar from "@/components/controls/SearchBar";
+import SuggestedHeader from "@/components/filters/SuggestedHeader";
+import DayNightCards from "@/components/summary/DayNightCards";
+import TripsTable from "@/components/table/TripsTable";
+import SummaryCard from "@/components/summary/SummaryCard";
 
 // Dynamic import for LeafletMap (client-only)
-const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
+const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center border rounded-lg bg-gray-50">
@@ -27,15 +31,15 @@ export default function Dashboard() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [startInput, setStartInput] = useState('');
-  const [endInput, setEndInput] = useState('');
-  const [dayNight, setDayNight] = useState<DayNight>('Day');
-  
+
+  const [startInput, setStartInput] = useState("");
+  const [endInput, setEndInput] = useState("");
+  const [dayNight, setDayNight] = useState<DayNight>("Day");
+
   const [startCoords, setStartCoords] = useState<Coordinates | null>(null);
   const [endCoords, setEndCoords] = useState<Coordinates | null>(null);
   const [route, setRoute] = useState<RouteGeometry | null>(null);
-  
+
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [clickCount, setClickCount] = useState(0);
 
@@ -43,29 +47,50 @@ export default function Dashboard() {
   useEffect(() => {
     loadTripsFromCSV()
       .then((data) => {
+        console.log(`Loaded ${data.length} trips from CSV`);
+        console.log(`Sample trip:`, data[0]);
         setTrips(data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to load trips:', err);
-        setError('Failed to load trip data. Please ensure trip_summary.csv is in public/data/');
+        console.error("Failed to load trips:", err);
+        setError(
+          "Failed to load trip data. Please ensure trip_summary.csv is in public/data/"
+        );
         setLoading(false);
       });
   }, []);
 
-  // Compute filtered trips
+  // Compute filtered trips and sort by reliability score (highest first)
   const filteredTrips = useMemo(() => {
-    return filterTrips(trips, dayNight, startInput, endInput);
+    const filtered = filterTrips(trips, dayNight, startInput, endInput);
+    console.log(`Filtered trips: ${filtered.length} for ${dayNight} period`);
+
+    // Sort by reliability score (descending), then by date (most recent first)
+    return filtered.sort((a, b) => {
+      const scoreA = a.reliability_score || 0;
+      const scoreB = b.reliability_score || 0;
+
+      // Primary sort: reliability score (higher is better)
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+
+      // Secondary sort: date (more recent first)
+      return (
+        new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+      );
+    });
   }, [trips, dayNight, startInput, endInput]);
 
   // Compute suggestions for Day and Night
   const daySuggestions = useMemo(() => {
-    const dayTrips = filterTrips(trips, 'Day', startInput, endInput);
+    const dayTrips = filterTrips(trips, "Day", startInput, endInput);
     return computeSuggestedVehicles(dayTrips);
   }, [trips, startInput, endInput]);
 
   const nightSuggestions = useMemo(() => {
-    const nightTrips = filterTrips(trips, 'Night', startInput, endInput);
+    const nightTrips = filterTrips(trips, "Night", startInput, endInput);
     return computeSuggestedVehicles(nightTrips);
   }, [trips, startInput, endInput]);
 
@@ -81,7 +106,7 @@ export default function Dashboard() {
   // Handle search
   const handleSearch = async () => {
     if (!startInput.trim() || !endInput.trim()) {
-      alert('Please enter both starting and ending points');
+      alert("Please enter both starting and ending points");
       return;
     }
 
@@ -110,11 +135,11 @@ export default function Dashboard() {
       if (routeData) {
         setRoute(routeData);
       } else {
-        alert('Could not compute route between the two points');
+        alert("Could not compute route between the two points");
       }
     } catch (err) {
-      console.error('Search error:', err);
-      alert('An error occurred during search');
+      console.error("Search error:", err);
+      alert("An error occurred during search");
     }
   };
 
@@ -145,8 +170,19 @@ export default function Dashboard() {
     setDayNight(value);
   };
 
+  // Handle clear inputs
+  const handleClear = () => {
+    setStartInput("");
+    setEndInput("");
+    setStartCoords(null);
+    setEndCoords(null);
+    setRoute(null);
+    setClickCount(0);
+  };
+
   // Get vehicle ID for summary card
-  const vehicleId = selectedTrip?.vehicle_id || filteredTrips[0]?.vehicle_id || 'N/A';
+  const vehicleId =
+    selectedTrip?.vehicle_id || filteredTrips[0]?.vehicle_id || "N/A";
 
   if (loading) {
     return (
@@ -161,29 +197,35 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-xl text-red-600 mb-4">{error}</p>
-          <p className="text-gray-600">Please check the console for more details.</p>
+          <p className="text-gray-600">
+            Please check the console for more details.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="bg-blue-600 text-white py-4 px-6 shadow-md">
-        <h1 className="text-2xl font-bold">SafeTruck Dashboard</h1>
-        <p className="text-sm text-blue-100">Route & Fuel Efficiency Optimizer</p>
+    <div className="h-screen flex flex-col bg-white">
+      <header className="bg-white py-4 px-6 border-b border-gray-300/50">
+        <img
+          src="/safetruck-logo.png"
+          alt="SafeTruck"
+          className="h-[50px] mx-4"
+        />
       </header>
 
       <div className="flex-1 overflow-hidden">
         <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-0">
           {/* Left Panel - 2/3 */}
-          <div className="lg:col-span-2 p-6 overflow-y-auto">
+          <div className="lg:col-span-2 p-6 overflow-y-auto bg-white">
             <SearchBar
               startInput={startInput}
               endInput={endInput}
               onStartChange={setStartInput}
               onEndChange={setEndInput}
               onSearch={handleSearch}
+              onClear={handleClear}
             />
 
             <SuggestedHeader
@@ -204,15 +246,16 @@ export default function Dashboard() {
           </div>
 
           {/* Right Panel - 1/3 */}
-          <div className="lg:col-span-1 bg-gray-50 p-6 flex flex-col">
+          <div className="lg:col-span-1 bg-white flex flex-col border-l border-gray-300/50">
             <SummaryCard dayNight={dayNight} vehicleId={vehicleId} />
-            
-            <div className="flex-1 min-h-0">
+
+            <div className="flex-1 min-h-0 m-5">
               <LeafletMap
                 route={route}
                 startCoords={startCoords}
                 endCoords={endCoords}
                 onMapClick={handleMapClick}
+                isDarkTheme={dayNight === "Night"}
               />
             </div>
           </div>

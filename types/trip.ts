@@ -1,4 +1,4 @@
-export type DayNight = 'Day' | 'Night';
+export type DayNight = "Day" | "Night";
 
 export interface Trip {
   vehicle_id: string;
@@ -20,6 +20,7 @@ export interface Trip {
   // Derived fields
   time_taken_minutes: number;
   dayNight: DayNight;
+  reliability_score?: number; // 0-100 score for vehicle reliability
 }
 
 export interface Coordinates {
@@ -32,4 +33,16 @@ export interface SuggestedVehicle {
   fuel_efficiency_kmpl: number;
   avg_speed_kmh: number;
   duration_hr: number;
+}
+
+export interface VehicleStats {
+  vehicle_id: string;
+  trip_count: number;
+  avg_fuel_efficiency: number;
+  avg_time_taken: number;
+  avg_distance: number;
+  std_fuel_efficiency: number;
+  total_distance: number;
+  total_fuel: number;
+  reliability_score: number;
 }

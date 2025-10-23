@@ -5,6 +5,7 @@
 All components and features from the plan have been successfully implemented:
 
 ### 📂 Project Structure
+
 ```
 safetruck-hackathon/
 ├── app/
@@ -37,28 +38,33 @@ safetruck-hackathon/
 ### 🎯 Key Features
 
 1. **CSV Data Backend** ✅
+
    - Loads from `public/data/trip_summary.csv`
    - Parses with PapaParse
    - Computes Day/Night based on Malaysia timezone
    - Calculates time_taken_minutes
 
 2. **Search & Geocoding** ✅
+
    - Free-text location input
    - Nominatim geocoding integration
    - Case-insensitive filtering on start_key and end_key
 
 3. **Routing** ✅
+
    - OSRM route calculation
    - Route polyline display on map
    - Start/end markers
 
 4. **Map Interactions** ✅
+
    - Click-based route planning (2 clicks)
    - Auto-route when both points set
    - Centered on Kuala Lumpur (3.139, 101.6869)
    - Zoom level 10
 
 5. **Filtering & Suggestions** ✅
+
    - Day/Night toggle
    - Top 3 vehicles by fuel efficiency
    - Sorted by: efficiency → speed → duration
@@ -73,17 +79,20 @@ safetruck-hackathon/
 ## 🚀 Next Steps - To Run the Project
 
 ### Step 1: Install Dependencies
+
 **IMPORTANT**: You need to install npm packages first!
 
 Choose one method:
 
 **Method A - Command Prompt (Recommended)**
+
 ```cmd
 cd safetruck-hackathon
 npm install
 ```
 
 **Method B - PowerShell with Bypass**
+
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 cd safetruck-hackathon
@@ -91,17 +100,21 @@ npm install
 ```
 
 **Method C - Node.js Command Prompt**
+
 1. Open "Node.js command prompt" from Start menu
 2. Navigate: `cd s:\Hackathon2025\SafeTruck2025\safetruck-hackathon`
 3. Run: `npm install`
 
 ### Step 2: Start Development Server
+
 After installation completes:
+
 ```cmd
 npm run dev
 ```
 
 ### Step 3: Open Browser
+
 Navigate to: **http://localhost:3000**
 
 ## 📋 Testing Checklist
@@ -179,7 +192,7 @@ The app processes your CSV data as follows:
 ✅ Search and routing functional  
 ✅ Map interactions enabled  
 ✅ Table filtering operational  
-✅ Summary card displays correctly  
+✅ Summary card displays correctly
 
 ---
 
