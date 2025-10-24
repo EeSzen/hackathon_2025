@@ -70,7 +70,7 @@ export default function TripsTable({
                   <span>Reliability</span>
                   <span
                     className="cursor-help text-xs"
-                    title="Score from 0-10 based on fuel efficiency, consistency, and trip count. 8.0+ = Excellent, 7.0-7.9 = Great, 4.0-6.9 = Good, 0.1-3.9 = Fair. Requires 3+ trips."
+                    title="Score from 0-10 based on fuel efficiency, experience, and performance. Requires 3+ trips."
                   >
                     ⓘ
                   </span>

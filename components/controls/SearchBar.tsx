@@ -16,24 +16,21 @@ export default function SearchBar({
   onClear,
 }: SearchBarProps) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-3" style={{ width: "66.67%" }}>
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+      {/* Inputs Container */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-2/3">
         <input
           type="text"
           value={startInput}
           onChange={(e) => onStartChange(e.target.value)}
           placeholder="Start Destination"
-          className="px-3 py-[9px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A90E2] focus:border-[#4A90E2] text-black"
-          style={{ width: "calc(50% - 30px)" }}
+          className="w-full md:flex-1 px-3 py-[9px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A90E2] focus:border-[#4A90E2] text-black"
           aria-label="Start Destination"
         />
-        <span className="text-gray-600 font-medium italic text-[19px] mx-[5px]">
+        <span className="hidden md:inline text-gray-600 font-medium italic text-[19px] mx-[5px]">
           to
         </span>
-        <div
-          className="flex items-center gap-2"
-          style={{ width: "calc(50% - 30px)" }}
-        >
+        <div className="flex items-center gap-2 w-full md:flex-1">
           <input
             type="text"
             value={endInput}
@@ -45,7 +42,7 @@ export default function SearchBar({
           {onClear && (
             <button
               onClick={onClear}
-              className="p-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="p-2 text-gray-500 hover:text-gray-700 focus:outline-none flex-shrink-0"
               aria-label="Clear inputs"
               title="Clear inputs"
             >
@@ -65,9 +62,11 @@ export default function SearchBar({
           )}
         </div>
       </div>
+
+      {/* Search Button */}
       <button
         onClick={onSearch}
-        className="px-6 py-[9px] bg-[#69CCE9] text-white rounded-md hover:bg-[#5AB8D5] focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition-colors font-medium w-[150px]"
+        className="w-full md:w-[150px] px-6 py-[9px] bg-[#69CCE9] text-white rounded-md hover:bg-[#5AB8D5] focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition-colors font-medium"
         aria-label="Search"
       >
         Search

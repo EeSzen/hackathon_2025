@@ -13,7 +13,7 @@ export default function DayNightCards({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4 mb-4" style={{ width: "65%" }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 w-full md:w-[65%]">
       <div className="border border-[#4A90E2] rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white shadow-sm">
         <div className="flex items-center gap-2 text-sm text-gray-700">
           <span className="font-semibold text-[#003366] flex items-center gap-1">
